@@ -62,8 +62,27 @@ EduBridge/
 ├── ai.html  
 ├── webdev.html  
 ├── career.html  
-└── register.html
 
+```text
+EduBridge/
+├── backend/
+│ └── app.py
+├── assets/
+├── Styles/
+├── templates/
+├── auth/
+├── scripts/
+├── server/
+├── images/
+├── index.html
+├── login.html
+├── profile.html
+├── quiz.html
+├── ai.html
+├── webdev.html
+├── career.html
+└── register.html
+```
 
 ---
 
@@ -135,6 +154,77 @@ http://127.0.0.1:5000/
 3️⃣ Low-effort, spam, or duplicate PRs will be rejected  
 4️⃣ Admin may request changes before approval  
 5️⃣ Only merged PRs are considered valid contributions
+### 1. Clone the repository
+
+`git clone <your-repo-url>`
+
+cd EduBridge
+
+### 2. Setup Python Backend
+
+cd backend
+
+pip install flask python-dotenv openai
+
+### 3. Run the Backend
+
+python app.py
+
+### 4. Open Frontend
+
+Open index.html in your browser
+
+### Ensure JavaScript API calls point to:
+
+http://127.0.0.1:5000/
+
+---
+
+## 🤝 Contribution Guidelines
+- Fork the repository
+- Create a new branch for your feature or fix
+- Work only on admin-approved issues
+- Write clean, readable, and well-documented code
+- Make meaningful commit messages
+- Submit a Pull Request with a clear description
+- Wait for Project Admin review before merge
+
+---
+
+## 🏷 Issue Management
+Issues are created and managed by the Project admin
+
+Contributors must request issue assignment before starting work
+
+One issue is assigned to one contributor at a time
+
+Inactive contributors may be unassigned
+
+Issues are clearly defined and achievable
+
+### Issue Labels Used
+- easy
+- medium
+- hard
+- good first issue
+- bug
+- feature
+- documentation
+- help wanted
+
+---
+
+## 🔍 Pull Request Rules
+- PRs must be linked to an assigned issue
+- Code must be original and plagiarism-free
+- Low-effort, spam, or duplicate PRs will be rejected
+- Admin may request changes before approval
+- Only merged PRs are considered valid contributions
+
+---
+
+## 🚀 Future Enhancements
+Leaderboard system
 
 ---
 
@@ -146,6 +236,8 @@ http://127.0.0.1:5000/
 
 ---
 
+---
+
 ## 📜 License
 This project is licensed under the MIT License. See the LICENSE file for details.
 
@@ -154,3 +246,10 @@ This project is licensed under the MIT License. See the LICENSE file for details
 ## 📬 Contact
 - LinkedIn: Aditi Anand
 - Email: aditianand09tkp@gmail.com
+
+## 📬 Contact
+LinkedIn: Aditi Anand
+
+Email: aditianand09tkp@gmail.com
+
+---
