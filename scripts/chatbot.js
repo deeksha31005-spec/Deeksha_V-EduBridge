@@ -1,6 +1,6 @@
 // Chatbot functionality
 function initializeChatbot() {
-    // Chatbot Toggle
+    // Chatbot Elements
     const chatbotButton = document.getElementById("chatbotButton");
     const chatbotContainer = document.getElementById("chatbotContainer");
     const closeChatbot = document.getElementById("closeChatbot");
@@ -16,6 +16,10 @@ function initializeChatbot() {
 
     // Initialize chatbot container
     chatbotContainer.style.display = 'none';
+
+    // ---------------------------------------------------------
+    // UI HELPER FUNCTIONS
+    // ---------------------------------------------------------
 
     // Show typing indicator
     function showTypingIndicator() {
@@ -43,7 +47,7 @@ function initializeChatbot() {
         const messageDiv = document.createElement("div");
         messageDiv.classList.add("message");
         messageDiv.classList.add(isUser ? "user-message" : "bot-message");
-        messageDiv.innerHTML = message;
+        messageDiv.textContent = message; // Using textContent for security
         chatbotMessages.appendChild(messageDiv);
         chatbotMessages.scrollTop = chatbotMessages.scrollHeight;
     }
@@ -57,8 +61,10 @@ function initializeChatbot() {
         return 'general';
     }
 
-    // Get response based on user input
-    function getResponse(userInput, page) {
+    // ---------------------------------------------------------
+    // LOCAL FALLBACK LOGIC (Emergency Mode)
+    // ---------------------------------------------------------
+    function getLocalResponse(userInput, page) {
         const lowerInput = userInput.toLowerCase();
         
         // Course-related Responses
@@ -208,6 +214,59 @@ function initializeChatbot() {
         }
     }
 
+    // ---------------------------------------------------------
+    // MAIN HANDLER (Hybrid: Remote first, then Local)
+    // ---------------------------------------------------------
+    async function handleUserMessage() {
+        const userInput = chatbotInput.value.trim();
+        if (!userInput) return;
+
+        // 1. Display User Message
+        addMessage(userInput, true);
+        chatbotInput.value = "";
+
+        // 2. Show Indicator
+        const typingIndicator = showTypingIndicator();
+
+        try {
+            // 3. Attempt to fetch from Python Backend
+            const response = await fetch('http://127.0.0.1:5000/chat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ message: userInput })
+            });
+
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+
+            const data = await response.json();
+            
+            // Success: Remove indicator and show Backend Response
+            removeTypingIndicator(typingIndicator);
+            
+            if (data.error) {
+                // If backend sent a logical error, treat as fallback case
+                throw new Error(data.error);
+            }
+            addMessage(data.response, false);
+
+        } catch (error) {
+            console.log('Backend unreachable or error. Switching to local fallback mode.', error);
+            
+            // 4. FAILSAFE: Use Local Logic
+            const page = getCurrentPage();
+            // Simulate a tiny delay so it feels natural even on fallback
+            setTimeout(() => {
+                const localResponse = getLocalResponse(userInput, page);
+                removeTypingIndicator(typingIndicator);
+                addMessage(localResponse, false);
+            }, 500);
+        }
+    }
+
     // Toggle chatbot
     chatbotButton.addEventListener("click", () => {
         chatbotContainer.style.display = 'flex';
@@ -225,38 +284,13 @@ function initializeChatbot() {
         }, 300);
     });
 
-    // Handle user message and bot response
-    sendBtn.addEventListener("click", () => {
-        const userInput = chatbotInput.value.trim();
-        if (userInput) {
-            addMessage(userInput, true);
-            chatbotInput.value = "";
-
-            // Show typing indicator
-            const typingIndicator = showTypingIndicator();
-
-            // Simulate server response delay
-            setTimeout(() => {
-                try {
-                    const page = getCurrentPage();
-                    const response = getResponse(userInput, page);
-
-                    // Remove typing indicator
-                    removeTypingIndicator(typingIndicator);
-                    addMessage(response, false);
-                } catch (error) {
-                    console.error('Error:', error);
-                    removeTypingIndicator(typingIndicator);
-                    addMessage("Sorry, I couldn't process your request. Please try again.", false);
-                }
-            }, 1000); // Simulate 1 second delay
-        }
-    });
+    // Handle user message (Click)
+    sendBtn.addEventListener("click", handleUserMessage);
 
     // Handle Enter key press
     chatbotInput.addEventListener("keypress", (e) => {
         if (e.key === "Enter") {
-            sendBtn.click();
+            handleUserMessage();
         }
     });
 
@@ -276,5 +310,10 @@ function initializeChatbot() {
     console.log('Chatbot initialized successfully');
 }
 
-// Initialize chatbot when the script loads
-initializeChatbot(); 
+// Make globally available so index.html can call it if needed
+window.initializeChatbot = initializeChatbot;
+
+// Auto-init if elements exist (Backwards compatibility)
+if (document.getElementById('chatbotButton')) {
+    initializeChatbot();
+}
