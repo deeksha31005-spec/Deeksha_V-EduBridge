@@ -1,6 +1,9 @@
 // Check if user is logged in
 function checkAuthState() {
     const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+    const currentUser = JSON.parse(localStorage.getItem('currentUser') || 'null');
+    const isAdmin = isLoggedIn
+        && (localStorage.getItem('isAdmin') === 'true' || (currentUser && currentUser.role === 'admin'));
     const authButtons = document.getElementById('authButtons');
     const navLinks = document.querySelector('.nav-links');
     
@@ -85,6 +88,8 @@ function checkAuthState() {
                 profileButton.classList.remove('active');
             });
         }
+
+        updateProfileAdminLink(isAdmin);
     } else {
         // Show auth buttons
         if (authButtons) {
@@ -95,6 +100,71 @@ function checkAuthState() {
         const profileSection = document.getElementById('profileSection');
         if (profileSection) {
             profileSection.remove();
+        }
+    }
+
+    updateAdminNavLink(isAdmin);
+}
+
+function updateAdminNavLink(isAdmin) {
+    const navLinks = document.querySelector('.nav-links');
+    if (!navLinks) {
+        return;
+    }
+
+    const existing = document.getElementById('adminNavLink');
+    if (!isAdmin && existing) {
+        existing.remove();
+        return;
+    }
+
+    if (isAdmin && !existing) {
+        const adminNav = document.createElement('li');
+        adminNav.id = 'adminNavLink';
+        adminNav.innerHTML = `
+            <a href="admin.html">
+                <i class="fas fa-shield-alt"></i>
+                Admin
+            </a>
+        `;
+
+        const themeSelector = document.getElementById('themeSelector');
+        const themeItem = themeSelector ? themeSelector.closest('li') : null;
+        if (themeItem) {
+            navLinks.insertBefore(adminNav, themeItem);
+        } else {
+            navLinks.appendChild(adminNav);
+        }
+    }
+}
+
+function updateProfileAdminLink(isAdmin) {
+    const dropdown = document.querySelector('#profileSection .profile-dropdown ul');
+    if (!dropdown) {
+        return;
+    }
+
+    const existing = document.getElementById('profileAdminLink');
+    if (!isAdmin && existing) {
+        existing.remove();
+        return;
+    }
+
+    if (isAdmin && !existing) {
+        const adminItem = document.createElement('li');
+        adminItem.id = 'profileAdminLink';
+        adminItem.innerHTML = `
+            <a href="admin.html">
+                <i class="fas fa-shield-alt"></i>
+                Admin Dashboard
+            </a>
+        `;
+
+        const divider = dropdown.querySelector('.divider');
+        if (divider) {
+            dropdown.insertBefore(adminItem, divider);
+        } else {
+            dropdown.appendChild(adminItem);
         }
     }
 }
