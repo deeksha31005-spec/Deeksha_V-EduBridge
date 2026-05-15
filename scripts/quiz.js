@@ -1,9 +1,21 @@
-// Quiz data for different courses
+// Quiz data for different courses (load safely from localStorage)
+let quizData = {};
 const storedQuizData = localStorage.getItem('adminQuizzes');
-const quizData = storedQuizData ? JSON.parse(storedQuizData) : defaultQuizData;
-
-if (!storedQuizData) {
-    localStorage.setItem('adminQuizzes', JSON.stringify(defaultQuizData));
+if (storedQuizData) {
+    try {
+        const parsed = JSON.parse(storedQuizData);
+        if (parsed && typeof parsed === 'object') {
+            quizData = parsed;
+        } else {
+            throw new Error('invalid quiz data');
+        }
+    } catch (error) {
+        quizData = defaultQuizData;
+        try { localStorage.setItem('adminQuizzes', JSON.stringify(defaultQuizData)); } catch (e) {}
+    }
+} else {
+    quizData = defaultQuizData;
+    try { localStorage.setItem('adminQuizzes', JSON.stringify(defaultQuizData)); } catch (e) {}
 }
 
 // Quiz state variables
@@ -40,16 +52,16 @@ document.querySelectorAll('.start-quiz').forEach(button => {
     });
 });
 
-nextButton.addEventListener('click', nextQuestion);
-prevButton.addEventListener('click', previousQuestion);
-submitButton.addEventListener('click', submitQuiz);
-retryButton.addEventListener('click', () => {
-    resultsContainer.style.display = 'none';
-    courseSelection.style.display = 'block';
+if (nextButton) nextButton.addEventListener('click', nextQuestion);
+if (prevButton) prevButton.addEventListener('click', previousQuestion);
+if (submitButton) submitButton.addEventListener('click', submitQuiz);
+if (retryButton) retryButton.addEventListener('click', () => {
+    if (resultsContainer) resultsContainer.style.display = 'none';
+    if (courseSelection) courseSelection.style.display = 'block';
 });
-backButton.addEventListener('click', () => {
-    resultsContainer.style.display = 'none';
-    courseSelection.style.display = 'block';
+if (backButton) backButton.addEventListener('click', () => {
+    if (resultsContainer) resultsContainer.style.display = 'none';
+    if (courseSelection) courseSelection.style.display = 'block';
 });
 
 // Start quiz function
@@ -60,11 +72,12 @@ function startQuiz(course) {
     timeLeft = 60;
     selectedOption = null;
 
-    courseSelection.style.display = 'none';
-    quizContainer.style.display = 'block';
-    resultsContainer.style.display = 'none';
+    if (courseSelection) courseSelection.style.display = 'none';
+    if (quizContainer) quizContainer.style.display = 'block';
+    if (resultsContainer) resultsContainer.style.display = 'none';
 
-    document.getElementById('quizTitle').textContent = currentQuiz.title;
+    const quizTitleEl = document.getElementById('quizTitle');
+    if (quizTitleEl && currentQuiz && currentQuiz.title) quizTitleEl.textContent = currentQuiz.title;
     updateTimer();
     updateScore();
     showQuestion();
@@ -73,23 +86,28 @@ function startQuiz(course) {
 
 // Show current question
 function showQuestion() {
+    if (!currentQuiz || !Array.isArray(currentQuiz.questions)) {
+        return;
+    }
     const question = currentQuiz.questions[currentQuestionIndex];
-    questionText.textContent = question.question;
+    if (questionText) questionText.textContent = question.question || '';
 
-    optionsContainer.innerHTML = '';
-    question.options.forEach((option, index) => {
-        const optionElement = document.createElement('div');
-        optionElement.className = 'option';
-        optionElement.textContent = option;
-        optionElement.dataset.index = index;
-        optionElement.addEventListener('click', () => selectOption(index));
-        optionsContainer.appendChild(optionElement);
-    });
+    if (optionsContainer) {
+        optionsContainer.innerHTML = '';
+        (question.options || []).forEach((option, index) => {
+            const optionElement = document.createElement('div');
+            optionElement.className = 'option';
+            optionElement.textContent = option;
+            optionElement.dataset.index = index;
+            optionElement.addEventListener('click', () => selectOption(index));
+            optionsContainer.appendChild(optionElement);
+        });
+    }
 
     // Update navigation buttons
-    prevButton.disabled = currentQuestionIndex === 0;
-    nextButton.disabled = currentQuestionIndex === currentQuiz.questions.length - 1;
-    submitButton.style.display = currentQuestionIndex === currentQuiz.questions.length - 1 ? 'block' : 'none';
+    if (prevButton) prevButton.disabled = currentQuestionIndex === 0;
+    if (nextButton) nextButton.disabled = currentQuestionIndex === currentQuiz.questions.length - 1;
+    if (submitButton) submitButton.style.display = currentQuestionIndex === currentQuiz.questions.length - 1 ? 'block' : 'none';
 }
 
 // Select option
@@ -98,12 +116,15 @@ function selectOption(index) {
     document.querySelectorAll('.option').forEach(option => {
         option.classList.remove('selected');
     });
-    document.querySelector(`.option[data-index="${index}"]`).classList.add('selected');
-    
+    const el = document.querySelector(`.option[data-index="${index}"]`);
+    if (el) el.classList.add('selected');
+
     // Update score if correct
-    if (index === currentQuiz.questions[currentQuestionIndex].correct) {
-        score++;
-        updateScore();
+    if (currentQuiz && currentQuiz.questions && currentQuiz.questions[currentQuestionIndex]) {
+        if (index === currentQuiz.questions[currentQuestionIndex].correct) {
+            score++;
+            updateScore();
+        }
     }
 }
 

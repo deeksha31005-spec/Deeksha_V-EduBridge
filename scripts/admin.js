@@ -129,7 +129,7 @@ function requireAdmin(actionLabel) {
 function isValidUrl(value) {
     try {
         const url = new URL(value);
-        return Boolean(url.protocol && url.host);
+        return (url.protocol === 'http:' || url.protocol === 'https:') && Boolean(url.host);
     } catch (error) {
         return false;
     }
@@ -190,6 +190,10 @@ function validateQuizInput(course, quizTitle, question) {
         return 'Choose the correct option.';
     }
 
+    if (question.correct < 0 || question.correct >= trimmedOptions.length) {
+        return 'Choose a valid correct option.';
+    }
+
     return '';
 }
 
@@ -202,19 +206,22 @@ function initAdminDashboard() {
         return;
     }
 
-    isAdmin = localStorage.getItem(storageKeys.isAdmin) === 'true' || currentUser.role === 'admin';
+    // Derive admin from authenticated user role; avoid trusting a user-writable localStorage flag.
+    isAdmin = !!(currentUser && currentUser.role === 'admin');
     accessLevel.textContent = isAdmin ? 'Admin Active' : 'Admin Required';
     adminNotice.hidden = isAdmin;
     seedDashboard.disabled = !isAdmin;
 
-    if (currentUser.role === 'admin') {
-        localStorage.setItem(storageKeys.isAdmin, 'true');
-    }
+    // Do not persist an 'isAdmin' flag in localStorage as authoritative.
+    // Admin state is derived from the authenticated user's role.
 
     seedDashboardData();
     contentItems = loadContentItems();
     quizData = loadQuizData();
     users = loadUsers();
+
+    // Run quick sanity checks on loaded data and repair if needed
+    runSanityChecks();
 
     bindContentForm();
     bindQuizForm();
@@ -242,9 +249,13 @@ function seedDashboardData() {
 function loadContentItems() {
     const stored = localStorage.getItem(storageKeys.content);
     if (stored) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed)) {
-            return parsed;
+        try {
+            const parsed = JSON.parse(stored);
+            if (Array.isArray(parsed)) {
+                return parsed;
+            }
+        } catch (error) {
+            // fall through to fallback
         }
     }
 
@@ -260,7 +271,12 @@ function saveContentItems(items) {
 function loadQuizData() {
     const stored = localStorage.getItem(storageKeys.quizzes);
     if (stored) {
-        return JSON.parse(stored);
+        try {
+            const parsed = JSON.parse(stored);
+            if (parsed && typeof parsed === 'object') return parsed;
+        } catch (error) {
+            // fall through to fallback
+        }
     }
     const fallback = JSON.parse(JSON.stringify(defaultQuizData));
     localStorage.setItem(storageKeys.quizzes, JSON.stringify(fallback));
@@ -276,11 +292,16 @@ function loadUsers() {
     if (!stored) {
         return [];
     }
-
-    return JSON.parse(stored).map(user => ({
-        ...user,
-        role: user.role || 'member'
-    }));
+    try {
+        const parsed = JSON.parse(stored);
+        if (!Array.isArray(parsed)) return [];
+        return parsed.map(user => ({
+            ...user,
+            role: user.role || 'member'
+        }));
+    } catch (error) {
+        return [];
+    }
 }
 
 function saveUsers(updatedUsers) {
@@ -701,13 +722,8 @@ function syncCurrentUser() {
     if (updatedCurrent) {
         currentUser = updatedCurrent;
         localStorage.setItem(storageKeys.currentUser, JSON.stringify(currentUser));
-        if (currentUser.role === 'admin') {
-            localStorage.setItem(storageKeys.isAdmin, 'true');
-            isAdmin = true;
-        } else {
-            localStorage.removeItem(storageKeys.isAdmin);
-            isAdmin = false;
-        }
+        // Update admin state from currentUser.role only; do not write isAdmin to localStorage.
+        isAdmin = currentUser.role === 'admin';
         accessLevel.textContent = isAdmin ? 'Admin Active' : 'Admin Required';
         adminNotice.hidden = isAdmin;
         seedDashboard.disabled = !isAdmin;
@@ -796,3 +812,66 @@ document.addEventListener('DOMContentLoaded', () => {
     initThemeSelector();
     initAdminDashboard();
 });
+
+function runSanityChecks() {
+    // Validate contentItems
+    try {
+        if (!Array.isArray(contentItems)) {
+            contentItems = JSON.parse(JSON.stringify(fallbackContentItems));
+            saveContentItems(contentItems);
+            showToast('Repaired corrupted learning content data.', 'warning');
+        } else {
+            const badContent = contentItems.some(item => !item || !item.id || !item.title || !item.link);
+            if (badContent) {
+                contentItems = JSON.parse(JSON.stringify(fallbackContentItems));
+                saveContentItems(contentItems);
+                showToast('Reset malformed learning content to defaults.', 'warning');
+            }
+        }
+    } catch (e) {
+        contentItems = JSON.parse(JSON.stringify(fallbackContentItems));
+        saveContentItems(contentItems);
+        showToast('Recovered learning content data.', 'warning');
+    }
+
+    // Validate quizData
+    try {
+        if (!quizData || typeof quizData !== 'object') {
+            quizData = JSON.parse(JSON.stringify(defaultQuizData));
+            saveQuizData(quizData);
+            showToast('Repaired corrupted quiz data.', 'warning');
+        } else {
+            const courses = Object.keys(quizData);
+            const invalidCourse = courses.some(c => !quizData[c] || !Array.isArray(quizData[c].questions));
+            if (invalidCourse) {
+                quizData = JSON.parse(JSON.stringify(defaultQuizData));
+                saveQuizData(quizData);
+                showToast('Reset malformed quiz data to defaults.', 'warning');
+            }
+        }
+    } catch (e) {
+        quizData = JSON.parse(JSON.stringify(defaultQuizData));
+        saveQuizData(quizData);
+        showToast('Recovered quiz data.', 'warning');
+    }
+
+    // Validate users
+    try {
+        if (!Array.isArray(users)) {
+            users = [];
+            saveUsers(users);
+            showToast('Cleared malformed user data.', 'warning');
+        } else {
+            const invalidUser = users.some(u => !u || !u.id || !u.email || !u.name);
+            if (invalidUser) {
+                users = users.filter(u => u && u.id && u.email && u.name);
+                saveUsers(users);
+                showToast('Removed malformed user entries.', 'warning');
+            }
+        }
+    } catch (e) {
+        users = [];
+        saveUsers(users);
+        showToast('Recovered user data.', 'warning');
+    }
+}

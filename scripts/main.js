@@ -1,9 +1,15 @@
 // Check if user is logged in
 function checkAuthState() {
     const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
-    const currentUser = JSON.parse(localStorage.getItem('currentUser') || 'null');
-    const isAdmin = isLoggedIn
-        && (localStorage.getItem('isAdmin') === 'true' || (currentUser && currentUser.role === 'admin'));
+    let currentUser = null;
+    try {
+        currentUser = JSON.parse(localStorage.getItem('currentUser') || 'null');
+    } catch (error) {
+        currentUser = null;
+    }
+
+    // Derive admin from server-authoritative role when present. Do not trust a raw localStorage flag.
+    const isAdmin = isLoggedIn && !!(currentUser && currentUser.role === 'admin');
     const authButtons = document.getElementById('authButtons');
     const navLinks = document.querySelector('.nav-links');
     
@@ -67,26 +73,29 @@ function checkAuthState() {
             
             navLinks.appendChild(profileSection);
             
-            // Add event listeners for the new profile section
+            // Add event listeners for the new profile section (guard nodes)
             const profileButton = document.getElementById('profileButton');
             const logoutButton = document.getElementById('logoutButton');
-            
-            profileButton.addEventListener('click', function(e) {
-                e.stopPropagation();
-                profileButton.classList.toggle('active');
-            });
-            
-            logoutButton.addEventListener('click', function(e) {
-                e.preventDefault();
-                const auth = new Auth();
-                auth.logout();
-                window.location.href = 'index.html';
-            });
-            
-            // Close dropdown when clicking outside
-            document.addEventListener('click', function() {
-                profileButton.classList.remove('active');
-            });
+            if (profileButton) {
+                profileButton.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    profileButton.classList.toggle('active');
+                });
+
+                // Close dropdown when clicking outside
+                document.addEventListener('click', function() {
+                    profileButton.classList.remove('active');
+                });
+            }
+
+            if (logoutButton) {
+                logoutButton.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const auth = new Auth();
+                    auth.logout();
+                    window.location.href = 'index.html';
+                });
+            }
         }
 
         updateProfileAdminLink(isAdmin);
@@ -186,47 +195,50 @@ document.addEventListener('DOMContentLoaded', function() {
     const chatbotInput = document.getElementById('chatbotInput');
     const chatbotMessages = document.getElementById('chatbotMessages');
 
-    // Toggle chatbot visibility
-    chatbotButton.addEventListener('click', () => {
-        chatbotContainer.classList.add('show');
-    });
+    // Guard: only wire chatbot behavior if required nodes exist
+    if (chatbotContainer && chatbotButton && closeChatbot && sendBtn && chatbotInput && chatbotMessages) {
+        // Toggle chatbot visibility
+        chatbotButton.addEventListener('click', () => {
+            chatbotContainer.classList.add('show');
+        });
 
-    closeChatbot.addEventListener('click', () => {
-        chatbotContainer.classList.remove('show');
-    });
+        closeChatbot.addEventListener('click', () => {
+            chatbotContainer.classList.remove('show');
+        });
 
-    // Send message
-    function sendMessage() {
-        const message = chatbotInput.value.trim();
-        if (message) {
-            // Add user message
-            const userMessage = document.createElement('div');
-            userMessage.className = 'message user-message';
-            userMessage.textContent = message;
-            chatbotMessages.appendChild(userMessage);
+        // Send message
+        function sendMessage() {
+            const message = chatbotInput.value.trim();
+            if (message) {
+                // Add user message
+                const userMessage = document.createElement('div');
+                userMessage.className = 'message user-message';
+                userMessage.textContent = message;
+                chatbotMessages.appendChild(userMessage);
 
-            // Clear input
-            chatbotInput.value = '';
+                // Clear input
+                chatbotInput.value = '';
 
-            // Scroll to bottom
-            chatbotMessages.scrollTop = chatbotMessages.scrollHeight;
-
-            // Simulate bot response (replace with actual API call)
-            setTimeout(() => {
-                const botMessage = document.createElement('div');
-                botMessage.className = 'message bot-message';
-                botMessage.textContent = 'I am a simple chatbot. For full functionality, please implement the backend API.';
-                chatbotMessages.appendChild(botMessage);
+                // Scroll to bottom
                 chatbotMessages.scrollTop = chatbotMessages.scrollHeight;
-            }, 1000);
-        }
-    }
 
-    // Send message on button click or Enter key
-    sendBtn.addEventListener('click', sendMessage);
-    chatbotInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-            sendMessage();
+                // Simulate bot response (replace with actual API call)
+                setTimeout(() => {
+                    const botMessage = document.createElement('div');
+                    botMessage.className = 'message bot-message';
+                    botMessage.textContent = 'I am a simple chatbot. For full functionality, please implement the backend API.';
+                    chatbotMessages.appendChild(botMessage);
+                    chatbotMessages.scrollTop = chatbotMessages.scrollHeight;
+                }, 1000);
+            }
         }
-    });
-}); 
+
+        // Send message on button click or Enter key
+        sendBtn.addEventListener('click', sendMessage);
+        chatbotInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+    }
+});

@@ -3,9 +3,13 @@ const contentStorageKey = 'adminContentItems';
 function loadContentItems() {
     const stored = localStorage.getItem(contentStorageKey);
     if (stored) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed)) {
-            return parsed;
+        try {
+            const parsed = JSON.parse(stored);
+            if (Array.isArray(parsed)) {
+                return parsed;
+            }
+        } catch (error) {
+            // fall through to fallback
         }
     }
 
@@ -77,14 +81,32 @@ function renderContentGrids() {
             const actions = document.createElement('div');
             actions.className = 'content-actions';
 
-            const link = document.createElement('a');
-            link.className = 'btn btn-outline';
-            link.href = item.link;
-            link.target = '_blank';
-            link.rel = 'noopener';
-            link.textContent = 'Open Resource';
+                // Validate link protocol to avoid javascript: XSS vectors
+                let linkNode = null;
+                try {
+                    const parsedUrl = new URL(item.link, window.location.origin);
+                    if (parsedUrl.protocol === 'http:' || parsedUrl.protocol === 'https:') {
+                        const link = document.createElement('a');
+                        link.className = 'btn btn-outline';
+                        link.href = parsedUrl.href;
+                        link.target = '_blank';
+                        link.rel = 'noopener';
+                        link.textContent = 'Open Resource';
+                        linkNode = link;
+                    }
+                } catch (error) {
+                    // invalid URL — leave linkNode null
+                }
 
-            actions.appendChild(link);
+                if (linkNode) {
+                    actions.appendChild(linkNode);
+                } else {
+                    const disabled = document.createElement('button');
+                    disabled.className = 'btn btn-outline disabled';
+                    disabled.disabled = true;
+                    disabled.textContent = 'Invalid link';
+                    actions.appendChild(disabled);
+                }
             cardContent.append(title, meta, description, actions);
             card.appendChild(cardContent);
             grid.appendChild(card);
