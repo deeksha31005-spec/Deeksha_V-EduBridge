@@ -504,6 +504,60 @@ footer {
     margin-top: 0.25rem;
 }
 
+/* Curated Content */
+.section-intro {
+    text-align: center;
+    max-width: 720px;
+    margin: 0 auto 2rem;
+    color: var(--text-color);
+    opacity: 0.8;
+}
+
+.content-grid {
+    margin-top: 1.5rem;
+}
+
+.content-card .card-content {
+    display: grid;
+    gap: 0.8rem;
+}
+
+.content-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.content-tag {
+    padding: 0.25rem 0.75rem;
+    border-radius: 999px;
+    border: 1px solid rgba(52, 152, 219, 0.3);
+    background: rgba(52, 152, 219, 0.12);
+    color: var(--secondary-color);
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.02rem;
+}
+
+.content-description {
+    margin: 0;
+    color: var(--text-color);
+}
+
+.content-actions {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    justify-content: flex-start;
+}
+
+.content-empty {
+    text-align: center;
+    margin: 1rem 0 0;
+    opacity: 0.7;
+    display: none;
+}
+
 /* Quiz Card */
 .quiz-card {
     max-width: 600px;
